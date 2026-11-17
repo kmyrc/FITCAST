@@ -194,9 +194,9 @@
   .hidden{display:none!important}
   .fitgrid-wrap{margin-top:18px}
   .fitgrid{display:grid;grid-template-columns:86px repeat(6,minmax(0,1fr));gap:4px;align-items:stretch}
-  .fg-cell{position:relative;aspect-ratio:1.35;border-radius:8px;background:var(--card2);border:1px solid var(--line);cursor:pointer;overflow:hidden;display:grid;place-items:center;font-size:9px;font-weight:600;color:var(--accent-ink);padding:0;min-width:0}
+  .fg-cell{position:relative;aspect-ratio:1.35;border-radius:8px;background:var(--card2);border:1px solid var(--line);cursor:pointer;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;color:var(--accent-ink);padding:0;min-width:0;width:100%;box-sizing:border-box}
   .fg-cell .fill{position:absolute;inset:0;background:var(--accent)}
-  .fg-cell{container-type:size}
+  .fg-cell{container-type:inline-size}   /* width-only: 'size' made the squares collapse on iPhone Safari */
   .fg-cell span{position:relative;font-size:min(34px,24cqw);font-weight:800;line-height:1;letter-spacing:-.02em}
   .fg-cell span .mb{font-size:inherit}
   .fg-cell.best span{font-size:min(34px,34cqw)}
@@ -210,7 +210,7 @@
   .fitgrid-legend .sw{display:inline-block;width:12px;height:12px;border-radius:3px;background:var(--accent);margin-right:5px;vertical-align:-2px}
   .scale-note{font-size:11px;color:var(--muted);margin-top:8px}
   .scale-note b{color:var(--text)}
-  @media (max-width:520px){.fitgrid{grid-template-columns:52px repeat(6,minmax(0,1fr));gap:3px}.fg-y,.fg-x{font-size:9px}.fg-cell{font-size:9px;aspect-ratio:1}.weather{grid-template-columns:1fr;gap:10px}}
+  @media (max-width:520px){.fitgrid{grid-template-columns:38px repeat(6,minmax(0,1fr));gap:4px}#weatherCard{padding:16px 10px}.fg-y,.fg-x{font-size:10px}.fg-y{padding-right:4px}.fg-cell{font-size:9px;aspect-ratio:1;border-radius:10px}.fg-cell span{font-size:28cqw}.fg-cell.best span{font-size:34cqw}.weather{grid-template-columns:1fr;gap:10px}}
   .foot{color:var(--muted);font-size:10px;margin-top:24px}
   .foot a{color:var(--muted)}
   /* ---- responsive: laptops / desktops / tablets / phones ---- */
@@ -241,7 +241,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Fit<span>cast</span><small class="ver" title="Version">v1.1</small></h1>
+  <h1>Fit<span>cast</span><small class="ver" title="Version">v1.2</small></h1>
   <nav class="tabs" role="tablist">
     <button role="tab" data-view="today" class="on">Today</button>
     <button role="tab" data-view="trip">For a trip</button>
