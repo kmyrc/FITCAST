@@ -10,6 +10,12 @@ What to wear for today's weather, and what to pack for a trip. By Royce Ju Young
 - Hosted on GitHub Pages at https://kmyrc.github.io/FITCAST/ — every push to `main` updates the live site.
 - `.nojekyll` tells GitHub Pages to serve the files as-is.
 
+## Versions
+
+The version shows next to the title. Bump it in `index.html` (the `.ver` tag) with each update.
+
+- **v1.0** (2026-11-17): first public release. Today tab with the tops × bottoms grid, For a trip tab with multiple locations and packing counts.
+
 ## Copyright
 
 © 2026 Royce Ju Young Kim. All rights reserved.
