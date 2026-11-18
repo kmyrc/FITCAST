@@ -6,7 +6,7 @@ What to wear for today's weather, and what to pack for a trip. By Royce Ju Young
 
 - `index.html` is the whole app (one page, no build step).
 - Weather and place search come from [Open-Meteo](https://open-meteo.com) (free for non-commercial use).
-- The "My closet" feature is still in the code, switched off. Set `const FEATURES = { closet: true }` in `index.html` to bring it back.
+- Accounts and closet sync use Supabase (free plan). Database setup is in `supabase/setup.sql`. The key in `index.html` is the public (publishable) key; Row Level Security keeps each person's closet private. Never put the secret key in this repo.
 - Hosted on GitHub Pages at https://kmyrc.github.io/FITCAST/ — every push to `main` updates the live site.
 - `.nojekyll` tells GitHub Pages to serve the files as-is.
 
@@ -14,6 +14,7 @@ What to wear for today's weather, and what to pack for a trip. By Royce Ju Young
 
 The version shows next to the title. Bump it in `index.html` (the `.ver` tag) with each update.
 
+- **v2.0** (2026-11-18): accounts. My closet is back, saved to your account and synced across devices (Supabase).
 - **v1.3** (2026-11-17): trips can be up to 16 days long (note next to Trip length).
 - **v1.2** (2026-11-17): fix tiny grid squares on iPhone; bigger Best/Maybe labels on phones.
 - **v1.1** (2026-11-17): version label sits at the bottom of the title.

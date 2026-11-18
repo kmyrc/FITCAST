@@ -22,6 +22,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <title>Fitcast — what to wear today</title>
 <style>
   :root{
@@ -192,6 +193,14 @@
   .byline .copy{display:block;font-size:9px;color:var(--muted);margin-top:2px}
   h1 .ver{font-family:"Almarai",sans-serif;font-size:11px;font-weight:400;letter-spacing:.02em;text-transform:none;color:var(--muted);opacity:.7;margin-left:10px;vertical-align:baseline}
   .h2-note{font-size:11px;font-weight:400;color:var(--muted);opacity:.7;margin-left:6px}
+  .auth-form{display:flex;flex-direction:column;gap:8px;max-width:360px}
+  input[type=email],input[type=password]{background:var(--card2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:inherit}
+  .auth-form .primary{margin-top:4px}
+  .closet-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .who-bar{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px}
+  .migrate{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px;padding:10px 12px;border:1px solid rgba(255,214,10,.45);border-radius:12px;font-size:12px}
+  .tile.busy{opacity:.5;pointer-events:none}
+  @media (pointer:coarse){ input[type=email],input[type=password]{font-size:16px} }
   .hidden{display:none!important}
   .fitgrid-wrap{margin-top:18px}
   .fitgrid{display:grid;grid-template-columns:86px repeat(6,minmax(0,1fr));gap:4px;align-items:stretch}
@@ -242,7 +251,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Fit<span>cast</span><small class="ver" title="Version">v1.3</small></h1>
+  <h1>Fit<span>cast</span><small class="ver" title="Version">v2.0</small></h1>
   <nav class="tabs" role="tablist">
     <button role="tab" data-view="today" class="on">Today</button>
     <button role="tab" data-view="trip">For a trip</button>
@@ -340,8 +349,29 @@
   </div>
 
   <section id="viewCloset" class="hidden">
-  <div class="card" id="closetCard">
-    <h2>My closet <span class="muted" style="font-weight:400;font-size:12px" id="closetCount"></span></h2>
+  <div class="card hidden" id="authCard">
+    <h2>My closet</h2>
+    <p class="muted" style="margin-top:-4px">Sign in to save your closet to your account. It stays the same on your phone, laptop, anywhere you sign in.</p>
+    <div class="seg" id="authSeg" style="margin:6px 0 14px"><button data-a="in" class="on">Sign in</button><button data-a="up">Create account</button></div>
+    <form id="authForm" class="auth-form" novalidate>
+      <input id="authEmail" type="email" placeholder="Email" autocomplete="email" autocapitalize="off" spellcheck="false">
+      <input id="authPass" type="password" placeholder="Password" autocomplete="current-password">
+      <button class="primary" id="authGo" type="submit">Sign in</button>
+    </form>
+    <div id="authErr" class="err" style="margin-top:8px"></div>
+    <div id="authNote" class="muted" style="margin-top:8px;font-size:11px">Passwords need at least 8 characters.</div>
+  </div>
+
+  <div class="card hidden" id="closetCard">
+    <div class="closet-head">
+      <h2 style="margin:0">My closet <span class="muted" style="font-weight:400;font-size:12px" id="closetCount"></span></h2>
+      <div class="who-bar"><span id="whoEmail"></span><button class="linkish" id="signOutBtn">Sign out</button></div>
+    </div>
+    <div class="migrate hidden" id="migrateBox">
+      <span id="migrateText"></span>
+      <span class="row" style="gap:6px"><button class="small primary" id="migrateYes">Add them to my account</button><button class="small" id="migrateNo">Not now</button></span>
+    </div>
+    <div id="syncNote" class="muted" style="font-size:11px;margin-top:6px"></div>
     <div class="closet" id="closet"></div>
     <div id="closetMsg" class="err" style="margin-top:10px"></div>
     <div class="closet-foot hidden" id="closetFoot">
@@ -401,7 +431,7 @@
 /* ---------------- feature switches ----------------
    closet: the "My closet" tab (add your own clothes + "From my closet" outfits).
    Turned off for now. All the closet code is still here; set to true to bring it back. */
-const FEATURES = { closet: false };
+const FEATURES = { closet: true };
 
 /* ---------------- storage ---------------- */
 const store = {
@@ -413,7 +443,8 @@ const store = {
 let unit = store.get('fc_unit', 'F');
 let mode = FEATURES.closet ? store.get('fc_mode', 'general') : 'general';
 // older versions had more types: fold mid layer / innerwear into Top, drop accessories & shoes
-let closet = store.get('fc_closet', []).filter(i => i.cat !== 'accessory' && i.cat !== 'shoes').map(i => (i.cat === 'layer' || i.cat === 'innerwear') ? {...i, cat:'top'} : i);
+const deviceCloset = store.get('fc_closet', []).filter(i => i.cat !== 'accessory' && i.cat !== 'shoes').map(i => (i.cat === 'layer' || i.cat === 'innerwear') ? {...i, cat:'top'} : i);
+let closet = [];             // the signed-in user's closet (loaded from their account)
 let lastWx = null;      // weather data (always in °F / mph internally)
 let lastPlace = null;
 let shuffleSeed = 0;
@@ -788,7 +819,7 @@ function renderOutfit(){
   }
   $('tips').innerHTML = rec.tips.map(t => `<li class="${t.warn?'warn':''}">${esc(t.t)}</li>`).join('');
   if (mode === 'closet' && !closet.length)
-    $('tips').insertAdjacentHTML('afterbegin', `<li class="warn">Your closet is empty. Add clothes in the My closet tab so Fitcast can pick from them.</li>`);
+    $('tips').insertAdjacentHTML('afterbegin', `<li class="warn">${user ? 'Your closet is empty. Add clothes in the My closet tab so Fitcast can pick from them.' : 'Sign in on the My closet tab to build outfits from your own clothes.'}</li>`);
 }
 
 function renderCloset(){
@@ -846,7 +877,7 @@ $('mWarmth').addEventListener('change', () => mTouched.warmth = true);
 /* ---- photo crop / adjust ---- */
 let mSrc = null;                      // the uncropped photo (kept so you can re-adjust later)
 const crop = { img:null, scale:1, min:1, x:0, y:0, F:320 };
-function loadImage(src){ return new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = src; }); }
+function loadImage(src){ return new Promise((res, rej) => { const im = new Image(); if (/^https?:/.test(src)) im.crossOrigin = 'anonymous'; im.onload = () => res(im); im.onerror = rej; im.src = src; }); }
 function downscale(im, max){
   const k = Math.min(1, max / Math.max(im.naturalWidth, im.naturalHeight));
   const c = document.createElement('canvas'); c.width = Math.round(im.naturalWidth*k); c.height = Math.round(im.naturalHeight*k);
@@ -927,15 +958,26 @@ $('mPhotoInput').onchange = async e => {
     openCrop(pendingSrc, null);
   }catch(_){ $('mErr').textContent = "Couldn't read that image. Try a JPG or PNG."; }
 };
-$('mSave').onclick = () => {
+$('mSave').onclick = async () => {
   const name = $('mName').value.trim();
   if (!name){ $('mErr').textContent = 'Give it a name or short description (e.g. "grey hoodie").'; $('mName').focus(); return; }
   const data = { name, cat:$('mCat').value, warmth:+$('mWarmth').value, ...guessFlags(name), img:mImg, src: mImg ? mSrc : null, view: mImg ? mView : null };  // waterproof/windproof guessed from the name (e.g. "rain jacket")
-  if (editing) Object.assign(editing, data);
-  else closet.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2,7), ...data });
-  saveCloset(); closeItemModal(); renderCloset(); renderOutfit();
+  const item = editing ? { ...editing, ...data } : { id: newId(), ...data };
+  $('mSave').disabled = true; $('mSave').textContent = 'Saving…'; $('mErr').textContent = '';
+  try{
+    const saved = await cloud.save(item, editing);
+    if (editing) closet = closet.map(x => x.id === saved.id ? saved : x); else closet.push(saved);
+    closeItemModal(); renderCloset(); renderOutfit();
+  }catch(e){ $('mErr').textContent = cloudError(e); }
+  finally{ $('mSave').disabled = false; $('mSave').textContent = editing ? 'Save' : 'Add to closet'; }
 };
-$('mRemove').onclick = () => { if (!editing) return; closet = closet.filter(x => x.id !== editing.id); saveCloset(); closeItemModal(); renderCloset(); renderOutfit(); };
+$('mRemove').onclick = async () => {
+  if (!editing) return;
+  const it = editing; $('mRemove').disabled = true;
+  try{ await cloud.remove(it); closet = closet.filter(x => x.id !== it.id); closeItemModal(); renderCloset(); renderOutfit(); }
+  catch(e){ $('mErr').textContent = cloudError(e); }
+  finally{ $('mRemove').disabled = false; }
+};
 $('mCancel').onclick = closeItemModal;
 $('itemModal').addEventListener('mousedown', e => { if (e.target === $('itemModal')) closeItemModal(); });
 document.addEventListener('keydown', e => {
@@ -944,10 +986,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { if (cropping) $('cropCancel').click(); else closeItemModal(); }
   else if (e.key === 'Enter' && e.target.tagName !== 'BUTTON') { e.preventDefault(); (cropping ? $('cropDone') : $('mSave')).click(); }
 });
-function saveCloset(){
-  const ok = store.set('fc_closet', closet);
-  $('closetMsg').textContent = ok ? '' : "Your closet is too big to save in this browser. Try removing a few photos.";
-}
+function saveCloset(){ /* closets are saved to the account item by item now (see cloud.save) */ }
 function setStatus(msg, err){ $('status').textContent = msg || ''; $('status').className = err ? 'err' : 'muted'; }
 
 /* ---------------- photos -> small thumbnails ---------------- */
@@ -1062,7 +1101,7 @@ $('shuffleBtn').onclick = () => { shuffleSeed++; renderOutfit(); };
 
 $('clearBtn').onclick = () => { $('clearConfirm').classList.remove('hidden'); $('clearBtn').classList.add('hidden'); };
 $('clearNo').onclick = () => { $('clearConfirm').classList.add('hidden'); $('clearBtn').classList.remove('hidden'); };
-$('clearYes').onclick = () => { closet = []; saveCloset(); $('clearConfirm').classList.add('hidden'); $('clearBtn').classList.remove('hidden'); renderCloset(); renderOutfit(); };
+$('clearYes').onclick = async () => { try{ await cloud.clear(closet); closet = []; }catch(e){ $('closetMsg').textContent = cloudError(e); } $('clearConfirm').classList.add('hidden'); $('clearBtn').classList.remove('hidden'); renderCloset(); renderOutfit(); };
 
 
 /* =====================================================================
@@ -1391,6 +1430,175 @@ function renderTrip(){
   $('dayToggle').textContent = trip.showDays ? 'Hide day by day' : 'See day by day';
 }
 $('dayToggle').onclick = () => { trip.showDays = !trip.showDays; renderTrip(); };
+
+
+/* =====================================================================
+   ACCOUNTS + CLOSET SYNC (Supabase)
+   The publishable key is meant to be public; the database's Row Level
+   Security rules (supabase/setup.sql) make sure each person can only
+   read and change their own closet.
+   ===================================================================== */
+const SUPABASE_URL = 'https://crclqfzwxyyfumbgpclh.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_HDjQiobneqD6sDxmMCIidg_gdRKmkVN';
+const BUCKET = 'closet', SIGNED_SECS = 60*60*24;
+let sb = null, user = null;
+try{ sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:false } }); }catch(_){ sb = null; }
+
+function newId(){
+  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random()*16|0; return (c === 'x' ? r : (r&3|8)).toString(16); });
+}
+function cloudError(e){
+  const m = (e && (e.message || e.error_description || e.msg)) || '';
+  if (/fetch|network|Failed to|Load failed/i.test(m)) return "Couldn't reach your closet. Check your connection and try again.";
+  if (/JWT|session|auth/i.test(m)) return 'You got signed out. Sign in again and retry.';
+  return "Something went wrong saving to your closet. Try again." + (m ? ` (${m})` : '');
+}
+async function dataUrlToBlob(u){ return await (await fetch(u)).blob(); }
+
+const cloud = {
+  async load(){
+    const { data, error } = await sb.from('closet_items').select('*').order('created_at', { ascending:true });
+    if (error) throw error;
+    const paths = data.flatMap(r => [r.img_path, r.src_path]).filter(Boolean);
+    const urls = {};
+    if (paths.length){
+      const { data: signed, error: e2 } = await sb.storage.from(BUCKET).createSignedUrls(paths, SIGNED_SECS);
+      if (e2) throw e2;
+      (signed || []).forEach(x => { if (x.signedUrl) urls[x.path] = x.signedUrl; });
+    }
+    return data.map(r => ({ id:r.id, name:r.name, cat:r.cat, warmth:r.warmth, waterproof:r.waterproof, windproof:r.windproof,
+      view:r.view, img_path:r.img_path, src_path:r.src_path, img: urls[r.img_path] || null, src: urls[r.src_path] || null }));
+  },
+  async upload(dataUrl, tag, id){
+    const path = `${user.id}/${id}-${tag}-${Date.now()}.jpg`;    // new name each time so phones never show an old cached photo
+    const { error } = await sb.storage.from(BUCKET).upload(path, await dataUrlToBlob(dataUrl), { contentType:'image/jpeg', upsert:true });
+    if (error) throw error;
+    return path;
+  },
+  async save(item, before){
+    const old = before || {};
+    let img_path = old.img_path || null, src_path = old.src_path || null;
+    const toRemove = [];
+    if (!item.img){ if (img_path) toRemove.push(img_path); if (src_path) toRemove.push(src_path); img_path = src_path = null; }
+    else {
+      if (/^data:/.test(item.img)){ if (img_path) toRemove.push(img_path); img_path = await cloud.upload(item.img, 'sq', item.id); }
+      if (item.src && /^data:/.test(item.src)){ if (src_path) toRemove.push(src_path); src_path = await cloud.upload(item.src, 'src', item.id); }
+      if (!item.src && src_path){ toRemove.push(src_path); src_path = null; }
+    }
+    const row = { id:item.id, user_id:user.id, name:item.name, cat:item.cat, warmth:item.warmth, waterproof:!!item.waterproof, windproof:!!item.windproof,
+      img_path, src_path, view:item.view || null, updated_at:new Date().toISOString() };
+    const { error } = await sb.from('closet_items').upsert(row);
+    if (error) throw error;
+    if (toRemove.length) sb.storage.from(BUCKET).remove(toRemove).catch(() => {});
+    return { ...item, img_path, src_path };     // keep the local picture we already have on screen
+  },
+  async remove(item){
+    const { error } = await sb.from('closet_items').delete().eq('id', item.id);
+    if (error) throw error;
+    const paths = [item.img_path, item.src_path].filter(Boolean);
+    if (paths.length) sb.storage.from(BUCKET).remove(paths).catch(() => {});
+  },
+  async clear(items){
+    const { error } = await sb.from('closet_items').delete().eq('user_id', user.id);
+    if (error) throw error;
+    const paths = items.flatMap(i => [i.img_path, i.src_path]).filter(Boolean);
+    if (paths.length) sb.storage.from(BUCKET).remove(paths).catch(() => {});
+  }
+};
+
+/* ---- sign in / create account ---- */
+let authMode = 'in';
+function setAuthMode(m){
+  authMode = m;
+  document.querySelectorAll('#authSeg button').forEach(b => b.classList.toggle('on', b.dataset.a === m));
+  $('authGo').textContent = m === 'in' ? 'Sign in' : 'Create account';
+  $('authPass').setAttribute('autocomplete', m === 'in' ? 'current-password' : 'new-password');
+  $('authErr').textContent = '';
+}
+document.querySelectorAll('#authSeg button').forEach(b => b.onclick = () => setAuthMode(b.dataset.a));
+function authMessage(e){
+  const m = (e && e.message) || '';
+  if (/invalid login/i.test(m)) return 'Wrong email or password.';
+  if (/already registered|already exists/i.test(m)) return 'That email already has an account. Tap Sign in instead.';
+  if (/password/i.test(m) && /(least|short|weak|characters)/i.test(m)) return 'Pick a longer password (at least 8 characters).';
+  if (/email/i.test(m) && /invalid/i.test(m)) return 'That email address doesn\'t look right.';
+  if (/not confirmed/i.test(m)) return 'This account still needs its email confirmed.';
+  if (/rate limit|too many/i.test(m)) return 'Too many tries. Wait a minute and try again.';
+  if (/fetch|network|Failed to|Load failed/i.test(m)) return "Couldn't reach the account service. Check your connection.";
+  return m || 'Something went wrong. Try again.';
+}
+$('authForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  if (!sb){ $('authErr').textContent = 'Accounts are unavailable right now. Try reloading the page.'; return; }
+  const email = $('authEmail').value.trim(), password = $('authPass').value;
+  if (!/^\S+@\S+\.\S+$/.test(email)){ $('authErr').textContent = 'Enter your email address.'; return; }
+  if (password.length < (authMode === 'up' ? 8 : 1)){ $('authErr').textContent = authMode === 'up' ? 'Passwords need at least 8 characters.' : 'Enter your password.'; return; }
+  $('authGo').disabled = true; $('authErr').textContent = '';
+  try{
+    const res = authMode === 'in' ? await sb.auth.signInWithPassword({ email, password }) : await sb.auth.signUp({ email, password });
+    if (res.error) throw res.error;
+    if (authMode === 'up' && !res.data.session){ $('authErr').textContent = ''; $('authNote').textContent = 'Account created. Check your email to confirm it, then sign in.'; return; }
+    $('authPass').value = '';
+  }catch(err){ $('authErr').textContent = authMessage(err); }
+  finally{ $('authGo').disabled = false; }
+});
+$('signOutBtn').onclick = async () => { try{ await sb.auth.signOut(); }catch(_){} };
+
+/* ---- show the right closet screen, load the account's closet ---- */
+let lastLoad = 0, loading = false;
+function renderAccount(){
+  const on = !!user;
+  $('authCard').classList.toggle('hidden', on);
+  $('closetCard').classList.toggle('hidden', !on);
+  $('whoEmail').textContent = on ? user.email : '';
+  const offer = on && deviceCloset.length && !store.get('fc_moved_' + user.id, false);
+  $('migrateBox').classList.toggle('hidden', !offer);
+  if (offer) $('migrateText').textContent = `You have ${deviceCloset.length} item${deviceCloset.length>1?'s':''} saved on this device from before.`;
+}
+async function loadCloset(){
+  if (!user || loading) return;
+  loading = true; $('syncNote').textContent = closet.length ? '' : 'Loading your closet…';
+  try{ closet = await cloud.load(); lastLoad = Date.now(); $('syncNote').textContent = ''; $('closetMsg').textContent = ''; }
+  catch(e){ $('syncNote').textContent = ''; $('closetMsg').textContent = cloudError(e); }
+  finally{ loading = false; renderCloset(); renderOutfit(); }
+}
+async function onUser(u){
+  const changed = (u && u.id) !== (user && user.id);
+  user = u || null;
+  if (changed){ closet = []; renderCloset(); renderOutfit(); }
+  renderAccount();
+  if (user && changed) loadCloset();
+}
+// pick up changes made on another device when you come back to this one
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && user && Date.now() - lastLoad > 20000) loadCloset(); });
+
+/* ---- move an old on-device closet into the account ---- */
+$('migrateNo').onclick = () => { store.set('fc_moved_' + user.id, true); renderAccount(); };
+$('migrateYes').onclick = async () => {
+  const btn = $('migrateYes'); btn.disabled = true;
+  let done = 0, failed = 0;
+  for (const old of deviceCloset){
+    $('migrateText').textContent = `Adding ${done + 1} of ${deviceCloset.length}…`;
+    try{
+      const item = { id:newId(), name:old.name, cat:['top','outerwear','bottom'].includes(old.cat) ? old.cat : 'top', warmth:old.warmth || 2,
+        waterproof:!!old.waterproof, windproof:!!old.windproof, img:old.img || null, src:old.src || null, view:old.view || null };
+      closet.push(await cloud.save(item, null)); done++;
+    }catch(_){ failed++; done++; }
+  }
+  store.set('fc_moved_' + user.id, true);
+  if (!failed){ try{ localStorage.removeItem('fc_closet'); }catch(_){} deviceCloset.length = 0; }   // they live in the account now
+  btn.disabled = false; renderAccount(); renderCloset(); renderOutfit();
+  $('closetMsg').textContent = failed ? `${failed} item${failed>1?'s':''} couldn't be added. Try adding ${failed>1?'them':'it'} again by hand.` : '';
+};
+
+if (sb){
+  sb.auth.onAuthStateChange((_event, session) => { onUser(session ? session.user : null); });
+  sb.auth.getSession().then(({ data }) => onUser(data && data.session ? data.session.user : null)).catch(() => onUser(null));
+} else {
+  renderAccount();
+  $('authErr').textContent = 'Accounts are unavailable right now. Try reloading the page.';
+}
 
 const VIEWS = ['today','trip','closet'];
 function viewFromHash(){ const v = location.hash.slice(1); return VIEWS.includes(v) ? v : 'today'; }
