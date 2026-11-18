@@ -201,9 +201,12 @@
   .migrate{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px;padding:10px 12px;border:1px solid rgba(255,214,10,.45);border-radius:12px;font-size:12px}
   .tile.busy{opacity:.5;pointer-events:none}
   @media (pointer:coarse){ input[type=email],input[type=password]{font-size:16px} }
+  .loc-fit{font-weight:400;font-size:13px;color:var(--muted);margin-left:14px;white-space:nowrap}
+  .loc-fit b{color:var(--text);font-weight:700}
+  @media (max-width:520px){ .loc-fit{display:block;margin:2px 0 0;white-space:normal} }
   .hidden{display:none!important}
   .fitgrid-wrap{margin-top:18px}
-  .fitgrid{display:grid;grid-template-columns:86px repeat(6,minmax(0,1fr));gap:4px;align-items:stretch}
+  .fitgrid{display:grid;grid-template-columns:86px repeat(5,minmax(0,1fr));gap:4px;align-items:stretch}
   .fg-cell{position:relative;aspect-ratio:1.35;border-radius:8px;background:var(--card2);border:1px solid var(--line);cursor:pointer;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;color:var(--accent-ink);padding:0;min-width:0;width:100%;box-sizing:border-box}
   .fg-cell .fill{position:absolute;inset:0;background:var(--accent)}
   .fg-cell{container-type:inline-size}   /* width-only: 'size' made the squares collapse on iPhone Safari */
@@ -220,7 +223,7 @@
   .fitgrid-legend .sw{display:inline-block;width:12px;height:12px;border-radius:3px;background:var(--accent);margin-right:5px;vertical-align:-2px}
   .scale-note{font-size:11px;color:var(--muted);margin-top:8px}
   .scale-note b{color:var(--text)}
-  @media (max-width:520px){.fitgrid{grid-template-columns:38px repeat(6,minmax(0,1fr));gap:4px}#weatherCard{padding:16px 10px}.fg-y,.fg-x{font-size:10px}.fg-y{padding-right:4px}.fg-cell{font-size:9px;aspect-ratio:1;border-radius:10px}.fg-cell span{font-size:28cqw}.fg-cell.best span{font-size:34cqw}.weather{grid-template-columns:1fr;gap:10px}}
+  @media (max-width:520px){.fitgrid{grid-template-columns:38px repeat(5,minmax(0,1fr));gap:4px}#weatherCard{padding:16px 10px}.fg-y,.fg-x{font-size:10px}.fg-y{padding-right:4px}.fg-cell{font-size:9px;aspect-ratio:1;border-radius:10px}.fg-cell span{font-size:28cqw}.fg-cell.best span{font-size:34cqw}.weather{grid-template-columns:1fr;gap:10px}}
   .foot{color:var(--muted);font-size:10px;margin-top:24px}
   .foot a{color:var(--muted)}
   /* ---- responsive: laptops / desktops / tablets / phones ---- */
@@ -251,7 +254,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Fit<span>cast</span><small class="ver" title="Version">v2.1</small></h1>
+  <h1>Fit<span>cast</span><small class="ver" title="Version">v2.2</small></h1>
   <nav class="tabs" role="tablist">
     <button role="tab" data-view="today" class="on">Today</button>
     <button role="tab" data-view="trip">For a trip</button>
@@ -692,10 +695,9 @@ function pickFromCloset(rec){
 const SCALE = [
   { name:'Tank top',    hi:100, lo:85 },
   { name:'T-shirt',     hi:85,  lo:75 },
-  { name:'Long sleeve', hi:75,  lo:65 },
-  { name:'Crewneck',    hi:65,  lo:55 },
+  { name:'Long sleeve / Crewneck', hi:75, lo:55 },
   { name:'Hoodie',      hi:55,  lo:45 },
-  { name:'Thick coat',  hi:45,  lo:20 }
+  { name:'Double layer', hi:45, lo:20 }      // e.g. a hoodie under a heavy coat
 ];
 function scaleStep(t){ const i = SCALE.findIndex(s => t >= s.lo); return i === -1 ? SCALE.length-1 : i; }
 function scalePos(t){   // 0..1 across the bar
@@ -1330,25 +1332,26 @@ function dayFit(w){
   if (w.fLo < 25 || base < 40) outer = 2;                // heavy coat only for real cold, not just a frosty morning
   else if (w.fLo < 45 || base < 52) outer = 1;
   else if (coldEvening || w.rain || w.wind >= 18) outer = 0;
-  // "Thick coat" on the grid means a heavy coat over a hoodie, so show the hoodie as the top and the coat as outerwear
-  return { base, top: ti === 5 ? 'Hoodie' : SCALE[ti].name, ti, bottom: BOTTOMS[bi].name, outer: ti === 5 ? 2 : outer, rain: w.rain, snow: w.snow };
+  // "Double layer" means a hoodie under a heavy coat, so it always comes with the heavy coat
+  return { base, top: SCALE[ti].name, ti, bottom: BOTTOMS[bi].name, outer: ti === 4 ? 2 : outer, rain: w.rain, snow: w.snow };
 }
 const OUTER_NAMES = ['Light jacket', 'Mid-weight jacket', 'Heavy coat'];
 function packList(days){
   const fits = days.filter(d => !d.missing).map(d => ({ d, f: dayFit(d) }));
   const n = fits.length, laundry = n > 10;
   const cap = x => laundry ? Math.min(x, 7) : x;            // longer than 10 days: pack a week's worth and do laundry
-  // Tops: one shirt per day (tank / tee / long sleeve). Crewnecks & hoodies get re-worn (1 per 3 days).
+  // Tops: one shirt per day (tank / tee / long sleeve or crewneck). Hoodies get re-worn (1 per 3 days);
+  // hoodie and double-layer days still get a long sleeve / crewneck underneath.
+  const LS = 'Long sleeve / Crewneck';
   const shirt = {}, layer = {};
   for (const {f} of fits){
     if (f.ti <= 2) shirt[f.top] = (shirt[f.top] || 0) + 1;
-    else { const under = f.ti >= 4 ? 'Long sleeve' : (f.base >= 60 ? 'T-shirt' : 'Long sleeve'); shirt[under] = (shirt[under] || 0) + 1;
-           if (f.ti <= 4) layer[f.top] = (layer[f.top] || 0) + 1; else layer['Hoodie'] = (layer['Hoodie'] || 0) + 1; }
+    else { shirt[LS] = (shirt[LS] || 0) + 1; layer['Hoodie'] = (layer['Hoodie'] || 0) + 1; }
   }
   const shirtTotal = Object.values(shirt).reduce((a,b) => a+b, 0);
   const tops = [];
-  for (const name of ['Tank top','T-shirt','Long sleeve']) if (shirt[name]) tops.push([name, Math.max(1, Math.round(cap(shirtTotal) * shirt[name] / shirtTotal))]);
-  for (const name of ['Crewneck','Hoodie']) if (layer[name]) tops.push([name, Math.min(3, Math.ceil(layer[name] / 3))]);
+  for (const name of ['Tank top','T-shirt',LS]) if (shirt[name]) tops.push([name, Math.max(1, Math.round(cap(shirtTotal) * shirt[name] / shirtTotal))]);
+  if (layer['Hoodie']) tops.push(['Hoodie', Math.min(3, Math.ceil(layer['Hoodie'] / 3))]);
   // Outerwear: one piece, the warmest you'll need, plus a rain layer if it'll rain and the main piece isn't the coat
   const outerMax = fits.reduce((m, {f}) => f.outer == null ? m : Math.max(m, f.outer), -1);
   const rainDays = fits.filter(x => x.f.rain).length, snowDays = fits.filter(x => x.f.snow).length;
@@ -1398,6 +1401,11 @@ function renderTrip(){
     return `feels like <b>${fmtT(Math.min(...l))} – ${fmtT(Math.max(...h))}</b>` +
       (q.rainDays ? ` · rain likely on <b>${q.rainDays}</b> day${q.rainDays>1?'s':''}` : ' · mostly dry') + (q.snowDays ? ` · snow on <b>${q.snowDays}</b>` : '');
   };
+  const bestFit = q => {                                     // the most common day fit at this location
+    const c = {}; let best = null;
+    for (const {f} of q.fits){ const k = `${f.top} + ${f.bottom}`; c[k] = (c[k] || 0) + 1; if (!best || c[k] > c[best]) best = k; }
+    return best ? `<span class="loc-fit">best fit: <b>${esc(best)}</b></span>` : '';
+  };
   let html = '';
   if (places.length > 1){
     // one block per location (in trip order), then the total
@@ -1405,13 +1413,13 @@ function renderTrip(){
     for (const where of places){
       const q = packList(trip.days.filter(d => d.where === where));
       sum += count(q.tops) + count(q.outer) + count(q.bottoms);
-      html += `<div class="pack-block"><h3>${esc(where)}</h3><div class="trip-summary">${esc(describeDays(q.fits.map(x => iso(x.d.date))))} · ${summary(q)}</div><div class="pack small">${cards(q)}</div></div>`;
+      html += `<div class="pack-block"><h3>${esc(where)}${bestFit(q)}</h3><div class="trip-summary">${esc(describeDays(q.fits.map(x => iso(x.d.date))))} · ${summary(q)}</div><div class="pack small">${cards(q)}</div></div>`;
     }
     const total = count(p.tops) + count(p.outer) + count(p.bottoms);
     html += `<div class="pack-block total"><h3>Total to pack</h3><div class="trip-summary">${p.n} days · ${places.length} locations · ${summary(p)}</div><div class="pack">${cards(p)}</div>` +
       (total < sum ? `<div class="pack-note">Less than adding up each location, since you can rewear things and bring one jacket for the whole trip.</div>` : '') + `</div>`;
   } else {
-    html = `<div class="pack-block"><h3>${esc(places[0])}</h3><div class="trip-summary">${esc(describeDays(p.fits.map(x => iso(x.d.date))))} · ${summary(p)}</div><div class="pack">${cards(p)}</div></div>`;
+    html = `<div class="pack-block"><h3>${esc(places[0])}${bestFit(p)}</h3><div class="trip-summary">${esc(describeDays(p.fits.map(x => iso(x.d.date))))} · ${summary(p)}</div><div class="pack">${cards(p)}</div></div>`;
   }
   $('packBlocks').innerHTML = html;
   const tips = [];

@@ -15,6 +15,7 @@ What to wear for today's weather, and what to pack for a trip. By Royce Ju Young
 
 The version shows next to the title. Bump it in `index.html` (the `.ver` tag) with each update.
 
+- **v2.2** (2026-11-18): grid tops are Tank top, T-shirt, Long sleeve / Crewneck, Hoodie, Double layer; each trip location shows its best fit.
 - **v2.1** (2026-11-18): sign in with a username + password instead of email.
 - **v2.0** (2026-11-18): accounts. My closet is back, saved to your account and synced across devices (Supabase).
 - **v1.3** (2026-11-17): trips can be up to 16 days long (note next to Trip length).
