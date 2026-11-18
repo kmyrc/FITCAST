@@ -254,7 +254,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Fit<span>cast</span><small class="ver" title="Version">v2.2</small></h1>
+  <h1>Fit<span>cast</span><small class="ver" title="Version">v2.3</small></h1>
   <nav class="tabs" role="tablist">
     <button role="tab" data-view="today" class="on">Today</button>
     <button role="tab" data-view="trip">For a trip</button>
@@ -697,7 +697,7 @@ const SCALE = [
   { name:'T-shirt',     hi:85,  lo:75 },
   { name:'Long sleeve / Crewneck', hi:75, lo:55 },
   { name:'Hoodie',      hi:55,  lo:45 },
-  { name:'Double layer', hi:45, lo:20 }      // e.g. a hoodie under a heavy coat
+  { name:'Coat',        hi:45,  lo:20 }      // a heavy coat (usually over a hoodie)
 ];
 function scaleStep(t){ const i = SCALE.findIndex(s => t >= s.lo); return i === -1 ? SCALE.length-1 : i; }
 function scalePos(t){   // 0..1 across the bar
@@ -1332,7 +1332,7 @@ function dayFit(w){
   if (w.fLo < 25 || base < 40) outer = 2;                // heavy coat only for real cold, not just a frosty morning
   else if (w.fLo < 45 || base < 52) outer = 1;
   else if (coldEvening || w.rain || w.wind >= 18) outer = 0;
-  // "Double layer" means a hoodie under a heavy coat, so it always comes with the heavy coat
+  // "Coat" days always come with the heavy coat (and a hoodie underneath when packing)
   return { base, top: SCALE[ti].name, ti, bottom: BOTTOMS[bi].name, outer: ti === 4 ? 2 : outer, rain: w.rain, snow: w.snow };
 }
 const OUTER_NAMES = ['Light jacket', 'Mid-weight jacket', 'Heavy coat'];
@@ -1341,7 +1341,7 @@ function packList(days){
   const n = fits.length, laundry = n > 10;
   const cap = x => laundry ? Math.min(x, 7) : x;            // longer than 10 days: pack a week's worth and do laundry
   // Tops: one shirt per day (tank / tee / long sleeve or crewneck). Hoodies get re-worn (1 per 3 days);
-  // hoodie and double-layer days still get a long sleeve / crewneck underneath.
+  // hoodie and coat days still get a long sleeve / crewneck underneath.
   const LS = 'Long sleeve / Crewneck';
   const shirt = {}, layer = {};
   for (const {f} of fits){
