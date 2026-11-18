@@ -15,6 +15,7 @@ What to wear for today's weather, and what to pack for a trip. By Royce Ju Young
 
 The version shows next to the title. Bump it in `index.html` (the `.ver` tag) with each update.
 
+- **v2.4** (2026-11-18): every "Maybe" label is white (only "Best" is dark).
 - **v2.3** (2026-11-18): "Double layer" renamed back to "Coat".
 - **v2.2** (2026-11-18): grid tops are Tank top, T-shirt, Long sleeve / Crewneck, Hoodie, Double layer; each trip location shows its best fit.
 - **v2.1** (2026-11-18): sign in with a username + password instead of email.

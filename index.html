@@ -254,7 +254,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Fit<span>cast</span><small class="ver" title="Version">v2.3</small></h1>
+  <h1>Fit<span>cast</span><small class="ver" title="Version">v2.4</small></h1>
   <nav class="tabs" role="tablist">
     <button role="tab" data-view="today" class="on">Today</button>
     <button role="tab" data-view="trip">For a trip</button>
@@ -747,7 +747,7 @@ function renderScale(){
       const btn = document.createElement(has ? 'button' : 'div');
       btn.className = 'fg-cell' + (best?' best':'') + (gridSel && gridSel[0]===c && gridSel[1]===r ? ' sel':'');
       btn.title = `${SCALE[c].name} + ${BOTTOMS[r].name}`;
-      btn.innerHTML = `<div class="fill" style="opacity:${Math.max(0.06, score).toFixed(2)}"></div><span style="${score<0.55?'color:var(--text)':''}">${label}</span>`;
+      btn.innerHTML = `<div class="fill" style="opacity:${Math.max(0.06, score).toFixed(2)}"></div><span style="${best?'':'color:var(--text)'}">${label}</span>`;   // Best = dark on bright yellow, every Maybe = white
       if (has) btn.onclick = () => { gridSel = [c, r]; renderScale(); };
       else btn.style.cursor = 'default';
       g.appendChild(btn);
