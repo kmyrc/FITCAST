@@ -251,7 +251,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Fit<span>cast</span><small class="ver" title="Version">v2.0</small></h1>
+  <h1>Fit<span>cast</span><small class="ver" title="Version">v2.1</small></h1>
   <nav class="tabs" role="tablist">
     <button role="tab" data-view="today" class="on">Today</button>
     <button role="tab" data-view="trip">For a trip</button>
@@ -354,12 +354,12 @@
     <p class="muted" style="margin-top:-4px">Sign in to save your closet to your account. It stays the same on your phone, laptop, anywhere you sign in.</p>
     <div class="seg" id="authSeg" style="margin:6px 0 14px"><button data-a="in" class="on">Sign in</button><button data-a="up">Create account</button></div>
     <form id="authForm" class="auth-form" novalidate>
-      <input id="authEmail" type="email" placeholder="Email" autocomplete="email" autocapitalize="off" spellcheck="false">
+      <input id="authUser" type="text" placeholder="Username" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="20">
       <input id="authPass" type="password" placeholder="Password" autocomplete="current-password">
       <button class="primary" id="authGo" type="submit">Sign in</button>
     </form>
     <div id="authErr" class="err" style="margin-top:8px"></div>
-    <div id="authNote" class="muted" style="margin-top:8px;font-size:11px">Passwords need at least 8 characters.</div>
+    <div id="authNote" class="muted" style="margin-top:8px;font-size:11px;line-height:1.6">No email needed. Usernames are 3–20 letters, numbers, _ or . · Passwords need at least 8 characters.<br>There's no password reset email, so save your password somewhere.</div>
   </div>
 
   <div class="card hidden" id="closetCard">
@@ -1441,6 +1441,13 @@ $('dayToggle').onclick = () => { trip.showDays = !trip.showDays; renderTrip(); }
 const SUPABASE_URL = 'https://crclqfzwxyyfumbgpclh.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_HDjQiobneqD6sDxmMCIidg_gdRKmkVN';
 const BUCKET = 'closet', SIGNED_SECS = 60*60*24;
+// Accounts use usernames. Supabase needs an email-shaped login, so each username becomes
+// "<username>@users.fitcast.invalid". ".invalid" is reserved and can never receive mail.
+const USER_DOMAIN = 'users.fitcast.invalid';
+const USERNAME_RE = /^[a-z0-9_.]{3,20}$/;
+const cleanUsername = u => (u || '').trim().toLowerCase().replace(/^@/, '');
+const toLogin = u => `${cleanUsername(u)}@${USER_DOMAIN}`;
+const displayName = u => { const e = (u && u.email) || ''; return e.endsWith('@' + USER_DOMAIN) ? e.slice(0, -USER_DOMAIN.length - 1) : e; };
 let sb = null, user = null;
 try{ sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:false } }); }catch(_){ sb = null; }
 
@@ -1519,10 +1526,10 @@ function setAuthMode(m){
 document.querySelectorAll('#authSeg button').forEach(b => b.onclick = () => setAuthMode(b.dataset.a));
 function authMessage(e){
   const m = (e && e.message) || '';
-  if (/invalid login/i.test(m)) return 'Wrong email or password.';
-  if (/already registered|already exists/i.test(m)) return 'That email already has an account. Tap Sign in instead.';
+  if (/invalid login/i.test(m)) return 'Wrong username or password.';
+  if (/already registered|already exists/i.test(m)) return 'That username is taken. Try another, or tap Sign in if it\'s yours.';
   if (/password/i.test(m) && /(least|short|weak|characters)/i.test(m)) return 'Pick a longer password (at least 8 characters).';
-  if (/email/i.test(m) && /invalid/i.test(m)) return 'That email address doesn\'t look right.';
+  if (/email/i.test(m) && /invalid/i.test(m)) return 'That username can\'t be used. Try letters and numbers only.';
   if (/not confirmed/i.test(m)) return 'This account still needs its email confirmed.';
   if (/rate limit|too many/i.test(m)) return 'Too many tries. Wait a minute and try again.';
   if (/fetch|network|Failed to|Load failed/i.test(m)) return "Couldn't reach the account service. Check your connection.";
@@ -1531,8 +1538,10 @@ function authMessage(e){
 $('authForm').addEventListener('submit', async e => {
   e.preventDefault();
   if (!sb){ $('authErr').textContent = 'Accounts are unavailable right now. Try reloading the page.'; return; }
-  const email = $('authEmail').value.trim(), password = $('authPass').value;
-  if (!/^\S+@\S+\.\S+$/.test(email)){ $('authErr').textContent = 'Enter your email address.'; return; }
+  const username = cleanUsername($('authUser').value), password = $('authPass').value;
+  if (!username){ $('authErr').textContent = 'Enter your username.'; return; }
+  if (!USERNAME_RE.test(username)){ $('authErr').textContent = 'Usernames are 3–20 characters: letters, numbers, _ or .'; return; }
+  const email = toLogin(username);
   if (password.length < (authMode === 'up' ? 8 : 1)){ $('authErr').textContent = authMode === 'up' ? 'Passwords need at least 8 characters.' : 'Enter your password.'; return; }
   $('authGo').disabled = true; $('authErr').textContent = '';
   try{
@@ -1551,7 +1560,7 @@ function renderAccount(){
   const on = !!user;
   $('authCard').classList.toggle('hidden', on);
   $('closetCard').classList.toggle('hidden', !on);
-  $('whoEmail').textContent = on ? user.email : '';
+  $('whoEmail').textContent = on ? '@' + displayName(user) : '';
   const offer = on && deviceCloset.length && !store.get('fc_moved_' + user.id, false);
   $('migrateBox').classList.toggle('hidden', !offer);
   if (offer) $('migrateText').textContent = `You have ${deviceCloset.length} item${deviceCloset.length>1?'s':''} saved on this device from before.`;
