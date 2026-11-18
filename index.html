@@ -191,6 +191,7 @@
   .pack-note{font-size:11px;color:var(--muted);margin-top:8px}
   .byline .copy{display:block;font-size:9px;color:var(--muted);margin-top:2px}
   h1 .ver{font-family:"Almarai",sans-serif;font-size:11px;font-weight:400;letter-spacing:.02em;text-transform:none;color:var(--muted);opacity:.7;margin-left:10px;vertical-align:baseline}
+  .h2-note{font-size:11px;font-weight:400;color:var(--muted);opacity:.7;margin-left:6px}
   .hidden{display:none!important}
   .fitgrid-wrap{margin-top:18px}
   .fitgrid{display:grid;grid-template-columns:86px repeat(6,minmax(0,1fr));gap:4px;align-items:stretch}
@@ -241,7 +242,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Fit<span>cast</span><small class="ver" title="Version">v1.2</small></h1>
+  <h1>Fit<span>cast</span><small class="ver" title="Version">v1.3</small></h1>
   <nav class="tabs" role="tablist">
     <button role="tab" data-view="today" class="on">Today</button>
     <button role="tab" data-view="trip">For a trip</button>
@@ -296,7 +297,7 @@
   <section id="viewTrip" class="hidden">
   <div class="card">
     <div class="trip-head">
-      <h2 style="margin:0">Trip length</h2>
+      <h2 style="margin:0">Trip length <small class="h2-note">up to 16 days</small></h2>
       <div class="trip-range" id="tripRange">Pick your dates</div>
     </div>
     <div class="cal" id="cal"></div>
@@ -1073,7 +1074,7 @@ const fromIso = s => new Date(s + 'T00:00:00Z');
 const addDays = (d, n) => new Date(d.getTime() + n*864e5);
 const todayUtc = () => { const n = new Date(); return new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate())); };
 const fmtTripDate = d => `${String(d.getUTCMonth()+1).padStart(2,'0')}.${String(d.getUTCDate()).padStart(2,'0')}.${String(d.getUTCFullYear()).slice(2)} ${DOW[d.getUTCDay()].toLowerCase()}`;
-const FORECAST_DAYS = 16, MAX_TRIP = 31, HIST_YEARS = 5;
+const FORECAST_DAYS = 16, MAX_TRIP = 16, HIST_YEARS = 5;   // trips can be up to 16 days long
 
 const trip = { start:null, end:null, hover:null, month:null, place:null, days:null, showDays:false, req:0 };
 

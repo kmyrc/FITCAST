@@ -14,6 +14,7 @@ What to wear for today's weather, and what to pack for a trip. By Royce Ju Young
 
 The version shows next to the title. Bump it in `index.html` (the `.ver` tag) with each update.
 
+- **v1.3** (2026-11-17): trips can be up to 16 days long (note next to Trip length).
 - **v1.2** (2026-11-17): fix tiny grid squares on iPhone; bigger Best/Maybe labels on phones.
 - **v1.1** (2026-11-17): version label sits at the bottom of the title.
 - **v1.0** (2026-11-17): first public release. Today tab with the tops × bottoms grid, For a trip tab with multiple locations and packing counts.
