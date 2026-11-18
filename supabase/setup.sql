@@ -21,6 +21,11 @@ create table if not exists public.closet_items (
 );
 create index if not exists closet_items_user_idx on public.closet_items(user_id);
 
+-- Let signed-in users reach this table through the API (new projects don't expose tables automatically).
+-- Signed-out visitors ("anon") get nothing. Row Level Security below still limits each user to their own rows.
+grant select, insert, update, delete on public.closet_items to authenticated;
+revoke all on public.closet_items from anon;
+
 -- 2) Row Level Security: each person can only see and change their own items
 alter table public.closet_items enable row level security;
 
