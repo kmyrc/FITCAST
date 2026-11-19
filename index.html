@@ -204,6 +204,10 @@
   .loc-fit{font-weight:400;font-size:13px;color:var(--muted);margin-left:14px;white-space:nowrap}
   .loc-fit b{color:var(--text);font-weight:700}
   @media (max-width:520px){ .loc-fit{display:block;margin:2px 0 0;white-space:normal} }
+  /* tab bar sticks to the top while you scroll */
+  .tabs{position:sticky;top:0;z-index:15;background:var(--bg);transition:box-shadow .15s}
+  .tabs.stuck{padding-top:env(safe-area-inset-top);box-shadow:0 8px 16px -10px rgba(0,0,0,.8)}
+  .tabs-sentinel{height:1px;margin-bottom:-1px}
   .hidden{display:none!important}
   .fitgrid-wrap{margin-top:18px}
   .fitgrid{display:grid;grid-template-columns:86px repeat(5,minmax(0,1fr));gap:4px;align-items:stretch}
@@ -254,7 +258,8 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Fit<span>cast</span><small class="ver" title="Version">v2.5</small></h1>
+  <h1>Fit<span>cast</span><small class="ver" title="Version">v2.6</small></h1>
+  <div class="tabs-sentinel" id="tabsSentinel" aria-hidden="true"></div>
   <nav class="tabs" role="tablist">
     <button role="tab" data-view="today" class="on">Today</button>
     <button role="tab" data-view="trip">For a trip</button>
@@ -1617,6 +1622,11 @@ if (sb){
   $('authErr').textContent = 'Accounts are unavailable right now. Try reloading the page.';
 }
 
+// add a shadow (and room for the iPhone status bar) once the tab bar is pinned to the top
+try{
+  new IntersectionObserver(([e]) => document.querySelector('.tabs').classList.toggle('stuck', !e.isIntersecting), { threshold: 0 })
+    .observe($('tabsSentinel'));
+}catch(_){}
 const VIEWS = ['today','trip','closet'];
 function viewFromHash(){ const v = location.hash.slice(1); return VIEWS.includes(v) ? v : 'today'; }
 function showView(v){
