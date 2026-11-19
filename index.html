@@ -254,7 +254,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Fit<span>cast</span><small class="ver" title="Version">v2.4</small></h1>
+  <h1>Fit<span>cast</span><small class="ver" title="Version">v2.5</small></h1>
   <nav class="tabs" role="tablist">
     <button role="tab" data-view="today" class="on">Today</button>
     <button role="tab" data-view="trip">For a trip</button>
@@ -695,7 +695,7 @@ function pickFromCloset(rec){
 const SCALE = [
   { name:'Tank top',    hi:100, lo:85 },
   { name:'T-shirt',     hi:85,  lo:75 },
-  { name:'Long sleeve / Crewneck', hi:75, lo:55 },
+  { name:'Long sleeve', hi:75,  lo:55 },
   { name:'Hoodie',      hi:55,  lo:45 },
   { name:'Coat',        hi:45,  lo:20 }      // a heavy coat (usually over a hoodie)
 ];
@@ -1340,9 +1340,9 @@ function packList(days){
   const fits = days.filter(d => !d.missing).map(d => ({ d, f: dayFit(d) }));
   const n = fits.length, laundry = n > 10;
   const cap = x => laundry ? Math.min(x, 7) : x;            // longer than 10 days: pack a week's worth and do laundry
-  // Tops: one shirt per day (tank / tee / long sleeve or crewneck). Hoodies get re-worn (1 per 3 days);
-  // hoodie and coat days still get a long sleeve / crewneck underneath.
-  const LS = 'Long sleeve / Crewneck';
+  // Tops: one shirt per day (tank / tee / long sleeve). Hoodies get re-worn (1 per 3 days);
+  // hoodie and coat days still get a long sleeve underneath.
+  const LS = 'Long sleeve';
   const shirt = {}, layer = {};
   for (const {f} of fits){
     if (f.ti <= 2) shirt[f.top] = (shirt[f.top] || 0) + 1;
