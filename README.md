@@ -15,6 +15,7 @@ What to wear for today's weather, and what to pack for a trip. By Royce Ju Young
 
 The version shows next to the title. Bump it in `index.html` (the `.ver` tag) with each update.
 
+- **v2.7** (2026-11-21): "Through the day" bar graph under the grid: feels-like temperature and best fit for each part of the day.
 - **v2.6** (2026-11-18): the Today / For a trip / My closet tabs stay pinned to the top while scrolling.
 - **v2.5** (2026-11-18): grid column is just "Long sleeve" (crewneck dropped from the label).
 - **v2.4** (2026-11-18): every "Maybe" label is white (only "Best" is dark).

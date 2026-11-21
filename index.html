@@ -208,6 +208,21 @@
   .tabs{position:sticky;top:0;z-index:15;background:var(--bg);transition:box-shadow .15s}
   .tabs.stuck{padding-top:env(safe-area-inset-top);box-shadow:0 8px 16px -10px rgba(0,0,0,.8)}
   .tabs-sentinel{height:1px;margin-bottom:-1px}
+  .dayplan{margin-top:22px;border-top:1px solid var(--line);padding-top:16px}
+  .dayplan-title{margin:0 0 12px;font-size:13px;color:var(--muted);font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+  .daybars{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;align-items:start}
+  .dbar{display:flex;flex-direction:column;align-items:center;text-align:center;min-width:0}
+  .dbar .temp{font-size:13px;font-weight:700;margin-bottom:4px;line-height:1}
+  .dbar .col{width:100%;max-width:64px;height:140px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center}
+  .dbar .fill{width:100%;border-radius:8px 8px 4px 4px;background:var(--accent);opacity:.85;min-height:6px}
+  .dbar.past{opacity:.35}
+  .dbar.now .fill{opacity:1;box-shadow:0 0 0 2px var(--text)}
+  .dbar .when{font-size:11px;color:var(--muted);margin-top:6px}
+  .dbar.now .when{color:var(--accent);font-weight:700}
+  .dbar .fit{font-size:12px;font-weight:700;margin-top:4px;line-height:1.25}
+  .dbar .fit span{display:block;font-weight:400;color:var(--muted);font-size:11px}
+  .dbar .wet{font-size:10px;color:#7fb3ff;margin-top:2px}
+  @media (max-width:520px){ .daybars{gap:4px} .dbar .col{height:110px} .dbar .temp{font-size:11px} .dbar .fit{font-size:10px} .dbar .fit span{font-size:9px} .dbar .when{font-size:9px} }
   .hidden{display:none!important}
   .fitgrid-wrap{margin-top:18px}
   .fitgrid{display:grid;grid-template-columns:86px repeat(5,minmax(0,1fr));gap:4px;align-items:stretch}
@@ -258,7 +273,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Fit<span>cast</span><small class="ver" title="Version">v2.6</small></h1>
+  <h1>Fit<span>cast</span><small class="ver" title="Version">v2.7</small></h1>
   <div class="tabs-sentinel" id="tabsSentinel" aria-hidden="true"></div>
   <nav class="tabs" role="tablist">
     <button role="tab" data-view="today" class="on">Today</button>
@@ -294,6 +309,10 @@
       <div class="fitgrid" id="fitGrid"></div>
       <div class="fitgrid-legend"><span><i class="sw" style="opacity:1"></i>Best fit</span><span><i class="sw" style="opacity:.45"></i>Maybe</span><span><i class="sw" style="opacity:.08"></i>Not today</span></div>
       <div class="scale-note" id="gridNote"></div>
+    </div>
+    <div class="dayplan hidden" id="dayPlan">
+      <h3 class="dayplan-title">Through the day</h3>
+      <div class="daybars" id="dayBars"></div>
     </div>
   </div>
 
@@ -557,7 +576,8 @@ async function getWeather(lat, lon){
     latitude: lat, longitude: lon, timezone: 'auto', forecast_days: 1,
     temperature_unit: 'fahrenheit', wind_speed_unit: 'mph', precipitation_unit: 'inch',
     current: 'temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,wind_gusts_10m',
-    daily: 'temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_probability_max,precipitation_sum,snowfall_sum,uv_index_max,weather_code,wind_speed_10m_max'
+    daily: 'temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_probability_max,precipitation_sum,snowfall_sum,uv_index_max,weather_code,wind_speed_10m_max',
+    hourly: 'apparent_temperature,precipitation_probability'
   });
   const r = await fetch('https://api.open-meteo.com/v1/forecast?' + p); if (!r.ok) throw new Error('Weather failed');
   const j = await r.json();
@@ -569,7 +589,9 @@ async function getWeather(lat, lon){
     feelsHi: d.apparent_temperature_max[0], feelsLo: d.apparent_temperature_min[0],
     rainChance: d.precipitation_probability_max[0] ?? 0, rainSum: d.precipitation_sum[0] ?? 0,
     snowSum: d.snowfall_sum[0] ?? 0, uv: d.uv_index_max[0] ?? 0, dayCode: d.weather_code[0],
-    windMax: d.wind_speed_10m_max[0]
+    windMax: d.wind_speed_10m_max[0],
+    hours: j.hourly ? j.hourly.time.map((t, i) => ({ h: +t.slice(11, 13), feels: j.hourly.apparent_temperature[i], rain: j.hourly.precipitation_probability ? j.hourly.precipitation_probability[i] : null })) : null,
+    nowHour: c.time ? +c.time.slice(11, 13) : new Date().getHours()     // local hour at that place
   };
 }
 
@@ -735,6 +757,40 @@ function cellVerdict(tx, by, a, w){
   return parts.length ? parts.join(', and ') : 'right on for today';
 }
 let gridSel = null;
+/* ---- through the day: best fit for each part of the day ---- */
+const DAY_SLOTS = [
+  { label:'Morning',   short:'6–9am',   from:6,  to:9  },
+  { label:'Late morning', short:'9–12',  from:9,  to:12 },
+  { label:'Afternoon', short:'12–3pm',  from:12, to:15 },
+  { label:'Late afternoon', short:'3–6pm', from:15, to:18 },
+  { label:'Evening',   short:'6–9pm',   from:18, to:21 },
+  { label:'Night',     short:'9pm–12',  from:21, to:24 }
+];
+function renderDayPlan(){
+  const w = lastWx;
+  if (!w || !w.hours || !w.hours.length){ $('dayPlan').classList.add('hidden'); return; }
+  const slots = DAY_SLOTS.map(sl => {
+    const hrs = w.hours.filter(x => x.h >= sl.from && x.h < sl.to && x.feels != null);
+    if (!hrs.length) return null;
+    const feels = hrs.reduce((a, x) => a + x.feels, 0) / hrs.length;
+    const rain = Math.max(...hrs.map(x => x.rain ?? 0));
+    return { ...sl, feels, rain, top: SCALE[Math.round(bandPos(SCALE, feels))].name, bottom: BOTTOMS[Math.round(bandPos(BOTTOMS, feels))].name };
+  }).filter(Boolean);
+  if (!slots.length){ $('dayPlan').classList.add('hidden'); return; }
+  const lo = Math.min(...slots.map(x => x.feels)) - 8, hi = Math.max(...slots.map(x => x.feels)) + 2;
+  $('dayPlan').classList.remove('hidden');
+  $('dayBars').innerHTML = slots.map(x => {
+    const pct = Math.max(5, Math.round(82 * (x.feels - lo) / Math.max(1, hi - lo)));
+    const state = w.nowHour >= x.to ? 'past' : (w.nowHour >= x.from ? 'now' : '');
+    return `<div class="dbar ${state}" title="${x.label}: feels like ${fmtT(x.feels)}">
+      <div class="col"><div class="temp">${fmtT(x.feels).replace(/°[FC]/, '°')}</div><div class="fill" style="height:${pct}%"></div></div>
+      <div class="when">${state === 'now' ? 'Now' : x.short}</div>
+      <div class="fit">${esc(x.top)}<span>${esc(x.bottom)}</span></div>
+      ${x.rain >= 40 ? `<div class="wet">rain ${Math.round(x.rain)}%</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
 function renderScale(){
   const has = !!lastWx;
   const a = has ? analyze(lastWx) : null;
@@ -760,6 +816,7 @@ function renderScale(){
   }
   g.insertAdjacentHTML('beforeend', `<div></div>`);
   SCALE.forEach((s,c) => g.insertAdjacentHTML('beforeend', `<div class="fg-x ${c===bx?'on':''}">${s.name}</div>`));
+  renderDayPlan();
   const note = $('gridNote');
   if (!has){
     note.innerHTML = '';
