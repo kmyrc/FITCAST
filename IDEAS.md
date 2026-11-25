@@ -21,6 +21,18 @@ A private mood board inside **My closet**. You upload outfit pictures you like (
 
 **Suggested order if built:** (1) private mood board with upload and crop → (2) automatic colors + "closest combo from your closet" → (3) optional AI photo reading.
 
+## End-of-day check-in (My closet)
+
+A quick check-in at the end of the day for signed-in users: "Today I wish I'd worn… **more layers / fewer layers / more covered / less covered** / it was right." Fitcast saves each answer with that day's weather and slowly shifts that person's temperature cutoffs, so suggestions fit how they actually run (always cold, always hot, etc.).
+
+- Lives in **My closet**, since you're already signed in there.
+- Needs a small new table (date, place, feels-like range, the fit Fitcast suggested, the answer).
+- Pairs with the outfit archive ("what I actually wore") and the "I run cold / normal / hot" setting below. The check-in could set that automatically over time.
+
+## Affiliate "fill the gap" picks
+
+Recommend pieces the closet is missing for a trip or the weather (e.g. a rain jacket for a rainy trip) through affiliate links. Only worth it once Fitcast has regular users. Needs clear "I earn a commission" labels, Open-Meteo's commercial plan, Supabase's paid tier, a privacy policy and terms, and the income run through the business.
+
 ## Other ideas that came up
 
 - **Personal packing system:** saved "always pack" essentials with simple rules (once per trip, per day, only if cold, only if rain, only for long trips), a checklist per trip, and an after-trip "used it / forgot it" review that tunes the next list.
